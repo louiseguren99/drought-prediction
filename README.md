@@ -76,13 +76,3 @@ src/
 notebooks/        # EDA and analysis
 api/              # FastAPI demo (to do)
 ```
-
-## Team
-
-| Name | Contribution |
-| --- | --- |
-| Louise Guren | |
-| Alexander Gombor | |
-| Clara Gomer | |
-| Linéa Lejerkrans | |
-| Joonas Sinerkari | |
