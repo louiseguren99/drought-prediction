@@ -1,0 +1,18 @@
+# Data and generated files (too large for GitHub)
+data/
+models/
+*.joblib
+*.pkl
+
+# Credentials
+.kaggle/
+kaggle.json
+access_token
+.env
+
+# Python / Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
