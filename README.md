@@ -6,11 +6,13 @@ Forecasts the U.S. Drought Monitor (USDM) drought class of a county 1–2 weeks 
 
 ## Setup
 
+Tested with Python 3.13.1 on macOS. A virtual environment is recommended:
+
 ```bash
+python -m venv .venv
+source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
-
-On Windows, use `py` instead of `python` if `python` is not recognised.
 
 ## Data
 
@@ -54,6 +56,57 @@ The first run reads the raw CSV files and caches weekly data in `data/processed/
 
 All randomness uses seed 42 (`--seed` to change).
 
+## Prediction API
+
+api/app.py serves a saved model with FastAPI. It needs a trained model in models/, so run `python -m src.train` first. By default it loads models/best_model_h1.joblib. Set the MODEL_PATH environment variable to use another file, for example the 2-week model.
+
+The API has its own requirements file with pinned versions, because saved scikit-learn models depend on the library version.
+
+```bash
+python -m pip install -r api/requirements.txt
+uvicorn app:app --app-dir api --reload
+```
+
+Open http://127.0.0.1:8000/docs to try it in the browser.
+
+Endpoints:
+
+- GET /health: shows if the model is loaded.
+- GET /features: lists the feature columns that /predict expects.
+- POST /predict: takes one row of features as JSON and returns the predicted drought class with class probabilities.
+
+The row must be computed beforehand with src/features.py, because the features need up to 26 weeks of history. It is checked against the feature list saved with the model. Missing or unknown features give a 422 error that lists them.
+
+An example request built from a real validation row is in api/examples/sample_request.json. It can be re-created with `python api/make_sample.py`, which needs the downloaded data in data/raw/.
+
+```bash
+curl -X POST http://127.0.0.1:8000/predict \
+  -H "Content-Type: application/json" \
+  -d @api/examples/sample_request.json
+```
+
+Every request is logged with its latency, which is also returned in the X-Process-Time-ms response header.
+
+## Docker
+
+The model file is not part of the image (models/ is in .gitignore). It is mounted when the container starts. Docker Desktop must be installed and running. From the project root:
+
+```bash
+docker build -f api/Dockerfile -t drought-api .
+docker run -p 8000:8000 -v "$(pwd)/models:/models" drought-api
+```
+
+The API is then available at http://localhost:8000/docs. To serve the 2-week model, add `-e MODEL_PATH=/models/best_model_h2.joblib` to the docker run command.
+
+## Tests
+
+```bash
+python -m pip install -r api/requirements.txt
+python -m pytest tests -v
+```
+
+tests/test_features.py checks that src/features.py has no data leakage, using small synthetic data. tests/test_api.py tests the API and is skipped if no trained model is found in models/. It needs the packages from api/requirements.txt.
+
 ## Pipeline
 
 1. **Weekly aggregation** (`src/data.py`): daily weather is grouped into USDM weeks (each week ends on the day the drought score is valid). Precipitation is summed, other variables averaged, max/min kept for extremes.
@@ -74,5 +127,13 @@ src/
 ├── evaluate.py   # metrics, baseline, plots
 └── train.py      # train/compare models (CLI)
 notebooks/        # EDA and analysis
-api/              # FastAPI demo (to do)
+api/
+├── app.py             # FastAPI app (/health, /features, /predict)
+├── Dockerfile
+├── requirements.txt   # pinned versions for the API
+├── make_sample.py     # builds examples/sample_request.json
+└── examples/          # sample_request.json
+tests/
+├── test_features.py   # leakage tests for features
+└── test_api.py        # tests of the API
 ```
