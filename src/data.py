@@ -113,8 +113,9 @@ def build_weekly_dataset(data_dir: Path = RAW_DIR, max_counties: int | None = No
     The result is cached in ``data/processed`` so the slow CSV pass only
     runs once per county selection.
     """
-    tag = "all" if max_counties is None else f"{max_counties}c_seed{seed}"
-    cache = PROCESSED_DIR / f"weekly_{tag}.pkl"
+    # The cache name includes the data folder, so data/sample and data/raw never mix
+    subset = "all" if max_counties is None else f"{max_counties}c_seed{seed}"
+    cache = PROCESSED_DIR / f"weekly_{Path(data_dir).name}_{subset}.pkl"
     if use_cache and cache.exists():
         print(f"Loading cached weekly data from {cache}")
         return pd.read_pickle(cache)
