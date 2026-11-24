@@ -6,3 +6,4 @@ joblib>=1.4
 kaggle>=1.7
 jupyter
 pytest>=8.0
+requests>=2.31
